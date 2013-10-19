@@ -266,6 +266,9 @@ void unitize_cell( Cell * cell )
   jobQueue = ( Job * ) malloc( DS_SIZE * sizeof( Job ) );
   printf("Queue size: %d bytes\n", DS_SIZE * sizeof( Job ) );
   printf( "Starting grouping:\n" );
+  idPool = 0;
+  jobQueueIndex = 0;
+  nextSeed = 0;
   // Search for ungrouped sample
   while( scan_for_seed( cell ) != -1 )
   {
@@ -280,6 +283,7 @@ void unitize_cell( Cell * cell )
       seed_search( cell , currentJob.x , currentJob.y , currentJob.id );
     }
   }
+  free( jobQueue );
   printf("Ended grouping with %d groups.\n", idPool - 1 );
 }
 
@@ -514,6 +518,7 @@ void create_groups()
   }
   free( cell->units );
   free( cell );
+  free( squares );
   //update_texture();
 }
 
