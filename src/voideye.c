@@ -378,14 +378,14 @@ Square * group_units( Cell * cell , int * sc )
       continue;
     }
     printf( "added.\n" );
-    squares[squarecount++] = ( Square ) { g->minx + ( width / 2 ) , g->miny + ( height / 2 ) , ( width + height ) / 2 };
+    squares[squarecount++] = ( Square ) { g->minx , g->miny  , ( width + height ) / 2 };
   }
   printf( "Freeing data.\n" );
   free( groups );
   printf( "Resizing array to fit sqaure count.\n" );
   squares = realloc( squares , sizeof( Square ) * squarecount );
   *sc = squarecount;
-  printf( "Made %d squares." , squarecount );
+  printf( "Made %d squares.\n" , squarecount );
   return squares;
 }
 
@@ -411,6 +411,21 @@ sort:
   return;
 }
 
+void render_squares( Square * squares , int squarecount )
+{
+  int i;
+  Square s;
+  for( i = 0; i < squarecount; i++ )
+  {
+    s = squares[i];
+    SDL_Rect rect = { s.x , s.y , s.size , s.size };
+    SDL_FillRect( downscale , &rect , 0xFF0000 >> ( 4 * i ) );
+  }
+  SDL_BlitSurface( downscale , NULL , window , NULL );
+  SDL_Flip( window );
+  SDL_Delay( 1000 );
+}
+
 void create_groups()
 {
   Cell * cell = create_cell();
@@ -418,6 +433,7 @@ void create_groups()
   int squarecount = 0;
   Square * squares = group_units( cell , &squarecount );
   sort_squares( squares , squarecount );
+  render_squares( squares , squarecount );
   free( cell->units );
   free( cell );
   //update_texture();
