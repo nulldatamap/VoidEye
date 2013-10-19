@@ -419,7 +419,7 @@ void render_squares( Square * squares , int squarecount )
   {
     s = squares[i];
     SDL_Rect rect = { s.x , s.y , s.size , s.size };
-    SDL_FillRect( downscale , &rect , i < 4 ? 0xFF0000 : 0xFF  );
+    SDL_FillRect( downscale , &rect , 0xFF0000 );
   }
   SDL_BlitSurface( downscale , NULL , window , NULL );
   SDL_Flip( window );
@@ -476,6 +476,26 @@ void render_line( SDL_Surface * s , int x , int y , int x2 , int y2 , Pixel colo
   }
 }
 
+void render_center( Square * squares , int squarecount )
+{
+  int ax = 0;
+  int ay = 0;
+  int t =  ( squarecount > 4 ? 4 : squarecount );
+  int i;
+  for( i = 0; i < t; i++ )
+  {
+    ax += squares[i].x + ( squares[i].size / 2 );
+    ay += squares[i].y + ( squares[i].size / 2 );
+  }
+  ax /= t;
+  ay /= t;
+  render_line( downscale , 0 , ay ,  DS_WIDTH - 1 , ay , ( Pixel ) { 0xFF , 00 , 00 } );
+  render_line( downscale , ax , 0 ,  ax , DS_HEIGHT - 1 , ( Pixel ) { 0xFF , 00 , 00 } );
+  SDL_BlitSurface( downscale , NULL  , window , NULL );
+  SDL_Flip( window );
+  SDL_Delay( 1000 );  
+}
+
 
 void create_groups()
 {
@@ -485,6 +505,13 @@ void create_groups()
   Square * squares = group_units( cell , &squarecount );
   sort_squares( squares , squarecount );
   render_squares( squares , squarecount );
+  if( squarecount <= 2 )
+  {
+    printf( "Not enough squares to build area.\n" );
+  }else
+  {
+    render_center( squares , squarecount );
+  }
   free( cell->units );
   free( cell );
   //update_texture();
