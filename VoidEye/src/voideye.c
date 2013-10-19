@@ -60,7 +60,7 @@ typedef struct
 
 typedef struct
 {
-  int x,y;
+  int centerx,centery;
   int size;
 } Square;
 
@@ -302,7 +302,7 @@ Cell * create_cell()
   return cell;
 }
 
-Square * group_units( Cell * cell , int * sc )
+void group_units( Cell * cell )
 {
   Group * groups = ( Group * ) malloc( sizeof( Group ) * (idPool ) );
   int i,x,y;
@@ -312,13 +312,13 @@ Square * group_units( Cell * cell , int * sc )
     groups[i] = ( Group ) { i+1 , 0 , -1 , -1 , -1 , -1 };
   // Build groups
   int biggesti = 0;
-  for( x = 0; x < DS_WIDTH; x++  )
-  for( y = 0; y < DS_HEIGHT; y++ )
+  for( i = 0; i < DS_SIZE; i++  )
   {
-    i = x + ( y * DS_WIDTH );
     if( cell->units[i].colour != 0xFF ) continue; // I know it's racist.
+    x = i % DS_WIDTH;
+    y = i / DS_WIDTH;
     g = &( groups[ cell->units[i].id-1 ] );
-    biggesti = y;
+    biggesti = i;
     g->count++;
     // MIN X
     if( g->minx == -1 )
@@ -332,7 +332,7 @@ Square * group_units( Cell * cell , int * sc )
       g->maxx = x > g->maxx ? x : g->maxx;
     // MIN Y
     if( g->miny == -1 )
-     g->miny = y;
+      g->miny = y;
     else
       g->miny = y < g->miny ? y : g->miny;
     // MAX Y
@@ -384,7 +384,6 @@ Square * group_units( Cell * cell , int * sc )
   free( groups );
   printf( "Resizing array to fit sqaure count.\n" );
   squares = realloc( squares , sizeof( Square ) * squarecount );
-  *sc = squarecount;
   printf( "Made %d squares." , squarecount );
 }
 
@@ -392,8 +391,7 @@ void create_groups()
 {
   Cell * cell = create_cell();
   unitize_cell( cell );
-  int squarecount = 0;
-  group_units( cell , &squarecount );
+  group_units( cell );
   free( cell->units );
   free( cell );
   //update_texture();
@@ -409,4 +407,3 @@ void quit_test(  )
   SDL_Quit();
   printf( "Quit.\n" );
 }
- 
