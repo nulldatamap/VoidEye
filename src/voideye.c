@@ -386,6 +386,29 @@ Square * group_units( Cell * cell , int * sc )
   squares = realloc( squares , sizeof( Square ) * squarecount );
   *sc = squarecount;
   printf( "Made %d squares." , squarecount );
+  return squares;
+}
+
+void sort_squares( Square * squares , int squarecount )
+{
+  int i;
+  Square temp;
+  printf( "Sorting squares!\n" );
+  if( squarecount <= 2 ) return;
+sort:
+  for( i = 0; i < squarecount; i++ )
+  {
+    if( squares[i].size < squares[i+1].size )
+    {
+      printf( "%d < %d, swapping %d and %d\n" , squares[i].size , squares[i+1].size , i , i+1 );
+      temp = squares[i];
+      squares[i] = squares[i+1];
+      squares[i+1] = temp;
+      goto sort;
+    }
+  }
+  printf( "Sorted.\n" );
+  return;
 }
 
 void create_groups()
@@ -393,7 +416,8 @@ void create_groups()
   Cell * cell = create_cell();
   unitize_cell( cell );
   int squarecount = 0;
-  group_units( cell , &squarecount );
+  Square * squares = group_units( cell , &squarecount );
+  sort_squares( squares , squarecount );
   free( cell->units );
   free( cell );
   //update_texture();
