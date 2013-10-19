@@ -367,14 +367,14 @@ Square * group_units( Cell * cell , int * sc )
       printf( "Too small, %d <= 2\n" , height );
       continue;
     }
-    if( ( height * 100 ) / width > 130 )
+    if( ( height * 100 ) / width > 145 )
     {
-      printf( "To high, %d > 130\n" , ( height * 100 ) / width );
+      printf( "To high, %d > 145\n" , ( height * 100 ) / width );
       continue;
     }
-    if( ( width * 100 ) / height > 130 )
+    if( ( width * 100 ) / height > 145 )
     {
-      printf( "To wide, %d > 130\n" , ( width * 100 ) / height );
+      printf( "To wide, %d > 145\n" , ( width * 100 ) / height );
       continue;
     }
     printf( "added.\n" );
@@ -419,7 +419,7 @@ void render_squares( Square * squares , int squarecount )
   {
     s = squares[i];
     SDL_Rect rect = { s.x , s.y , s.size , s.size };
-    SDL_FillRect( downscale , &rect , 0xFF0000 >> ( 4 * i ) );
+    SDL_FillRect( downscale , &rect , i < 4 ? 0xFF0000 : 0xFF  );
   }
   SDL_BlitSurface( downscale , NULL , window , NULL );
   SDL_Flip( window );
