@@ -279,7 +279,7 @@ void unitize_cell( Cell * cell )
     while( jobQueueIndex )
     {
        // Pop a job from the queue
-      Job atucurrentJob = jobQueue[ --jobQueueIndex ];
+      Job currentJob = jobQueue[ --jobQueueIndex ];
       // Perform search on the current job sample
       seed_search( cell , currentJob.x , currentJob.y , currentJob.id );
     }
@@ -400,7 +400,7 @@ void sort_squares( Square * squares , int squarecount )
   printf( "Sorting squares!\n" );
   if( squarecount <= 2 ) return;
 sort:
-  for( i = 0; i < squarecount; i++ )
+  for( i = 0; i < squarecount-1; i++ )
   {
     if( squares[i].size < squares[i+1].size )
     {
