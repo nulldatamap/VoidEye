@@ -109,7 +109,6 @@ void init_test( const char * fname )
   dspixels = ( Pixel * ) malloc( DS_SIZE * sizeof( Pixel ) ); // Downscaled version
   input = SDL_CreateRGBSurfaceFrom( (byte *)pixels , INPUT_WIDTH, INPUT_HEIGHT, INPUT_DEPTH, INPUT_PITCH, MASK_R , MASK_G , MASK_B , MASK_A );
   downscale = SDL_CreateRGBSurfaceFrom( (byte *)dspixels , DS_WIDTH, DS_HEIGHT, DS_DEPTH, DS_PITCH, MASK_R , MASK_G , MASK_B , MASK_A );
-  take_frame( (byte * )pixels );
   if( !input )
   {
     printf( "Failed to load input! %s\n" , SDL_GetError() );
@@ -123,7 +122,7 @@ void update_texture()
 {
   SDL_BlitSurface( input, NULL, window, NULL );
   SDL_Flip( window );
-  SDL_Delay( 1000 );
+  //SDL_Delay( 1000 );
 }
 
 void remove_colours()
@@ -213,11 +212,13 @@ void apply_contrast( int amount )
   }
   SDL_BlitSurface( downscale, NULL, window, NULL );
   SDL_Flip( window );
-  SDL_Delay( 1000 );
+  SDL_Delay( 0 );
 }
 
 void queue_job( Job job )
 {
+  if( jobQueueIndex >= DS_SIZE * 2 )
+    printf( "BAD: %d %d %d" , job.x , job.y , job.id );
   jobQueue[jobQueueIndex++] = job;
 }
 
@@ -263,10 +264,10 @@ int scan_for_seed( Cell * cell )
 
 void unitize_cell( Cell * cell )
 {
-  jobQueue = ( Job * ) malloc( DS_SIZE * sizeof( Job ) );
-  printf("Queue size: %d bytes\n", DS_SIZE * sizeof( Job ) );
+  jobQueue = ( Job * ) malloc( ( DS_SIZE ) * sizeof( Job ) * 2 );
+  printf("Queue size: %d bytes\n", DS_SIZE * sizeof( Job ) * 2 );
   printf( "Starting grouping:\n" );
-  idPool = 0;
+  idPool = 1;
   jobQueueIndex = 0;
   nextSeed = 0;
   // Search for ungrouped sample
@@ -278,7 +279,7 @@ void unitize_cell( Cell * cell )
     while( jobQueueIndex )
     {
        // Pop a job from the queue
-      Job currentJob = jobQueue[ --jobQueueIndex ];
+      Job atucurrentJob = jobQueue[ --jobQueueIndex ];
       // Perform search on the current job sample
       seed_search( cell , currentJob.x , currentJob.y , currentJob.id );
     }
@@ -289,7 +290,6 @@ void unitize_cell( Cell * cell )
 
 Cell * create_cell()
 {
-  printf( "%d == %d %d\n" , input->w * 3 , input->pitch , input->format->BytesPerPixel );
   // allocate the needed data
   Unit * units = ( Unit * ) malloc( DS_SIZE * sizeof( Unit ) );
   printf( "Allocated %d bytes.\n" , DS_SIZE * sizeof( Unit ) );
@@ -427,7 +427,7 @@ void render_squares( Square * squares , int squarecount )
   }
   SDL_BlitSurface( downscale , NULL , window , NULL );
   SDL_Flip( window );
-  SDL_Delay( 1000 );
+  SDL_Delay( 0 );
 }
 
 int abs( int a )
@@ -497,7 +497,7 @@ void render_center( Square * squares , int squarecount )
   render_line( downscale , ax , 0 ,  ax , DS_HEIGHT - 1 , ( Pixel ) { 0xFF , 00 , 00 } );
   SDL_BlitSurface( downscale , NULL  , window , NULL );
   SDL_Flip( window );
-  SDL_Delay( 1000 );  
+  SDL_Delay( 0 );  
 }
 
 
@@ -508,6 +508,7 @@ void create_groups()
   int squarecount = 0;
   Square * squares = group_units( cell , &squarecount );
   sort_squares( squares , squarecount );
+  printf( "Rendering\n" );
   render_squares( squares , squarecount );
   if( squarecount <= 2 )
   {
@@ -520,6 +521,19 @@ void create_groups()
   free( cell );
   free( squares );
   //update_texture();
+}
+
+void video_loop()
+{
+  int i;
+  for( i = 0; i < 10; i++ )
+  {
+    printf( "======= INTERATION %d =======\n" , i );
+    take_frame( (byte * )pixels );
+    update_texture();
+    apply_contrast( 911 );
+    create_groups();
+  }
 }
 
 void quit_test(  )

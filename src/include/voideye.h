@@ -10,5 +10,6 @@ int find_darkest();
 //char* find_avarage();
 void apply_contrast( int );
 void create_groups();
+void video_loop();
 
 #endif
