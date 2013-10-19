@@ -217,8 +217,6 @@ void apply_contrast( int amount )
 
 void queue_job( Job job )
 {
-  if( jobQueueIndex >= DS_SIZE * 2 )
-    printf( "BAD: %d %d %d" , job.x , job.y , job.id );
   jobQueue[jobQueueIndex++] = job;
 }
 
