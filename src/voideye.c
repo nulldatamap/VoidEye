@@ -426,6 +426,57 @@ void render_squares( Square * squares , int squarecount )
   SDL_Delay( 1000 );
 }
 
+int abs( int a )
+{
+  return a < 0 ? -a : a;
+}
+
+int sign( int a )
+{
+  return a > 0 ? 1 : ( a < 0 ? -1 : 0 );
+}
+
+
+void render_line( SDL_Surface * s , int x , int y , int x2 , int y2 , Pixel colour )
+{
+  Pixel * px = ( Pixel * ) s->pixels;
+  int dx = abs( x2 - x );
+  int dy = abs( y2 - y );
+  int sx , sy , r , e2;
+  if( x < x2 )
+    sx = 1;
+  else
+    sx = -1;
+  if( y < y2 )
+   sy = 1;
+  else
+    sy = -1;
+  r = dx - dy;
+  while( 1 )
+  {
+    px[x + ( y * s->w )] = colour;
+    if( x == x2 && y == y2 )
+      break;
+    e2 = r * 2;
+    if( e2 > -dy )
+    {
+      r -= dy;
+      x += sx;
+    }
+    if( x == x2 && y == y2 )
+    {
+      px[ x + ( y * s->w ) ] = colour;
+      break;
+    }
+    if( e2 < dx )
+    {
+      r += dx;
+      y += sy;
+    }
+  }
+}
+
+
 void create_groups()
 {
   Cell * cell = create_cell();
