@@ -25,6 +25,8 @@
 #include "Imaging.h"
 #include <semaphore.h>
 
+#include "cam.h"
+
 /// Camera number to use - we only have one camera, indexed from 0.
 #define CAMERA_NUMBER 0
 #define MMAL_CAMERA_PREVIEW_PORT 0
@@ -48,6 +50,51 @@ const int MAX_BITRATE = 30000000; // 30Mbits/s
 const int ABORT_INTERVAL = 100; // ms
 
 int mmal_status_to_int(MMAL_STATUS_T status);
+
+// ========= DUAL BUFFER CODE
+
+DualBuffer new_dualbuffer( int size )
+{
+  DualBuffer buf;
+  buf.primary_buffer = ( char * ) malloc( size );
+  buf.secondary_buffer = ( char * ) malloc( size );
+  buf.primary_state = 0; // Ready for use ( drained )
+  buf.secondary_sate = 0; // 1 means in-use.
+}
+
+char * get_dualbuffer( DualBuffer buf )
+{
+  // CALL ready_dualbuffer BEFORE THIS
+  // If our primary buffer is in use, return the other buffer
+  return buf.primary_state ? buf.secondary_buffer : buf.primary_buffer;
+}
+
+int ready_dualbuffer( DualBuffer buf )
+{
+  return buf.primary_state == 0 || buf.secondary_state == 0;
+}
+
+void free_dualbuffer( DualBuffer * buf )
+{
+  free( buf->primary_buffer );
+  free( buf->secondary_buffer );
+  buf->primary_buffer = buf->secondary_buffer = 0;
+  buf->primary_state = buf->secondary_state = -1;
+} 
+
+void drain_dualbuffer( DualBuffer * buf )
+{
+  if( buf->primary_state )
+  {
+    buf->primary_state = 0;
+  }else
+  {
+    buf->secondary_state = 0;
+  }
+}
+
+
+// ==========================
 
 
 /** Structure containing all state information for the current run

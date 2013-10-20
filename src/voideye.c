@@ -96,7 +96,7 @@ int jobQueueIndex = 0;
 
 // RUNTIME FLAGS:
 
-int debugmode = 1;
+int debugmode = 0;
 int nextflag = 0;
 int exitflag = 0;
 
@@ -118,23 +118,30 @@ void handle_input(  )
   {
     if( event.type == SDL_QUIT )
     {
-      exit( 0 );
+      exitflag = 1;
     }else if( event.type = SDL_KEYDOWN )
     {
       if( debugmode )
       {
         switch( event.key.keysym.sym )
         {
-          case SDLK_d:
+          case SDLK_a:
             debugmode = 0;
             printf( "Exiting debugmode\n" );
+            break;
+          case SDLK_UP:
+            red_procentage += 5;
+            break;
+          case SDLK_DOWN:
+            red_procentage -= 5;
             break;
           case SDLK_SPACE:
             nextflag = 1;
             break;
           case SDLK_ESCAPE:
-            exitflag = debugmode = 0;
-            break;
+            exitflag = 1;
+            debugmode = 0;
+            return;
         }
       }else
       {
@@ -145,7 +152,8 @@ void handle_input(  )
             printf( "Entering debugmode\n" );
             break;
           case SDLK_ESCAPE:
-            exitflag = 0;
+            exitflag = 1;
+            return;
             break;
         }
       }
@@ -303,8 +311,8 @@ void apply_contrast( int amount )
   int i;
   for( i = 0; i < DS_SIZE; i ++ )
   {
-    int total = ( dspixels[i].r + dspixels[i].g + dspixels[i].b );
-    int rp = total ? ( dspixels[i].r*100 / total ) : 0;
+    int total = ( dspixels[i].g + dspixels[i].b ) / 2;
+    int rp = dspixels[i].r - total;
     if( rp >= red_procentage )
       dspixels[i] = ( Pixel ) { 0xFF , 0xFF , 0xFF };
     else
@@ -618,21 +626,17 @@ void render_scaled_image( SDL_Surface * src , SDL_Surface * dst , int x, int y, 
       sx = src->w * px;
       sy = src->h * py;
       apx[ dx + ( dy * w ) ] =
-        pixel_to_apixel( ( ( Pixel * ) src->pixels )[ sx + ( sy * src->w ) ] );
+        ( ( APixel * ) src->pixels )[ sx + ( sy * src->w ) ];
     }
-  SDL_Surface* temp = SDL_CreateRGBSurfaceFrom( apx , w , h , 32 , w * 32 , 0xFF , 0xFF00 , 0xFF0000 , 0xFF000000 );
-  printf( "Blitting %x -> %x.\n%x -> %x\n" , temp , dst , apx , dst->pixels );
-  if( dst->pixels != windowpixels )
-  {
-    printf( "%x != %x" , dst->pixels, windowpixels );
-    dst->pixels = windowpixels;
-  }
+  SDL_Surface* temp = SDL_CreateRGBSurfaceFrom( apx , w , h , 32 , w * 4 , 0xFF , 0xFF00 , 0xFF0000 , 0xFF000000 );
   printf( "Now\n" );
-  SDL_BlitSurface( temp , NULL , dst , &( ( SDL_Rect ) { x , y , 0 , 0 } ) );
+  SDL_BlitSurface( temp , NULL , window , &( ( SDL_Rect ) { x , y , 0 , 0 } ) );
   printf( "Done!\n" );
   SDL_FreeSurface( temp );
   free( apx );
 }
+
+int diddisplay = 0;
 
 Indicator get_indication( Square * squares , int squarecount )
 {
@@ -670,11 +674,15 @@ void create_groups()
   if( debugmode )
   {
     render_squares( squares , squarecount );
-    wait_for_next();
   }
   if( squarecount <= 2 )
   {
     printf( "Not enough squares to build area.\n" );
+    if( ! diddisplay )
+    {
+      SDL_BlitSurface( input , NULL , window , NULL );
+      SDL_Flip( window );
+    }
   }else
   {
     if( debugmode )
@@ -685,12 +693,13 @@ void create_groups()
     Indicator indic = get_indication( squares , squarecount );
     printf("Indicator %d %d : %d\n" , indic.x , indic.y , indic.distance );
     int px , py , pw , ph;
-    px = indic.x - displayobject->w / 2;
-    py = indic.y - displayobject->h / 2;
-    double scale = ( double ) 100  / indic.distance;
+    double scale = (double) indic.distance / ( double ) 100 ;
     pw = displayobject->w * scale;
     ph = displayobject->h * scale;
+    px = indic.x - pw / 2;
+    py = indic.y - ph / 2;
     printf( "Scale setup: %f\n" , scale );
+    if( ! diddisplay ) SDL_BlitSurface( input , NULL , window , NULL );
     render_scaled_image( displayobject , window , px , py , pw , ph );
     SDL_Flip( window );
   }
@@ -705,11 +714,13 @@ void video_loop()
   int i = 0;
   while( ! exitflag )
   {
+    diddisplay = 0;
     printf( "======= INTERATION %d =======\n" , i++ );
     take_frame( (byte * )pixels );
     if( debugmode )
     {
       update_texture();
+      diddisplay = 1;
       wait_for_next();
     }
     apply_contrast( 911 );
