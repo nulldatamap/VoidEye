@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "include/voideye.h"
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
 #include <math.h>
 
 #define INPUT_WIDTH 640
@@ -86,6 +87,7 @@ SDL_Surface * displayobject;
 SDL_Surface * window;
 Pixel * pixels;
 Pixel * dspixels;
+Pixel * windowpixels;
 
 int idPool = 1;
 int nextSeed = 0;
@@ -94,7 +96,7 @@ int jobQueueIndex = 0;
 
 // RUNTIME FLAGS:
 
-int debugmode = 0;
+int debugmode = 1;
 int nextflag = 0;
 int exitflag = 0;
 
@@ -117,7 +119,7 @@ void handle_input(  )
     if( event.type == SDL_QUIT )
     {
       exit( 0 );
-    }else if( event.type = SDL_KEYPRESS )
+    }else if( event.type = SDL_KEYDOWN )
     {
       if( debugmode )
       {
@@ -196,6 +198,8 @@ void init_test( const char * fname )
     printf( "Failed to create window: %s\n" , SDL_GetError() );
     exit(1);
   }
+  windowpixels = window->pixels;
+  printf( "Window pixels: %x" , windowpixels );
   
   red_procentage = (int)fname;
 
@@ -600,10 +604,12 @@ void render_center( Square * squares , int squarecount )
 
 void render_scaled_image( SDL_Surface * src , SDL_Surface * dst , int x, int y, int w , int h )
 {
+  printf( "Rendering display object!\n" );
   APixel * apx = ( APixel * ) malloc( sizeof( APixel ) * w * h );
   int dx , dy; // Destination x , y
   int sx , sy; // Source x , y
   double px , py; // Procentage x , y
+  printf( "Scaling.\n" );
   forrange( dx , w )
     forrange( dy , h )
     {
@@ -614,8 +620,16 @@ void render_scaled_image( SDL_Surface * src , SDL_Surface * dst , int x, int y, 
       apx[ dx + ( dy * w ) ] =
         pixel_to_apixel( ( ( Pixel * ) src->pixels )[ sx + ( sy * src->w ) ] );
     }
-  SDL_Surface temp = SDL_CreateRGBSurfaceFrom( apx , w , h , 32 , w * 32 , 0xFF , 0xFF00 , 0xFF0000 , 0xFF000000 );
-  SDL_BlitSurface( temp , NULL , dst , ( SDL_Rect ) { x , y , 0 , 0 } );
+  SDL_Surface* temp = SDL_CreateRGBSurfaceFrom( apx , w , h , 32 , w * 32 , 0xFF , 0xFF00 , 0xFF0000 , 0xFF000000 );
+  printf( "Blitting %x -> %x.\n%x -> %x\n" , temp , dst , apx , dst->pixels );
+  if( dst->pixels != windowpixels )
+  {
+    printf( "%x != %x" , dst->pixels, windowpixels );
+    dst->pixels = windowpixels;
+  }
+  printf( "Now\n" );
+  SDL_BlitSurface( temp , NULL , dst , &( ( SDL_Rect ) { x , y , 0 , 0 } ) );
+  printf( "Done!\n" );
   SDL_FreeSurface( temp );
   free( apx );
 }
@@ -668,7 +682,7 @@ void create_groups()
       render_center( squares , squarecount );
       wait_for_next();
     }
-    Indicator indic = get_indication();
+    Indicator indic = get_indication( squares , squarecount );
     printf("Indicator %d %d : %d\n" , indic.x , indic.y , indic.distance );
     int px , py , pw , ph;
     px = indic.x - displayobject->w / 2;
@@ -676,6 +690,7 @@ void create_groups()
     double scale = ( double ) 100  / indic.distance;
     pw = displayobject->w * scale;
     ph = displayobject->h * scale;
+    printf( "Scale setup: %f\n" , scale );
     render_scaled_image( displayobject , window , px , py , pw , ph );
     SDL_Flip( window );
   }
@@ -687,9 +702,10 @@ void create_groups()
 
 void video_loop()
 {
+  int i = 0;
   while( ! exitflag )
   {
-    printf( "======= INTERATION %d =======\n" , i );
+    printf( "======= INTERATION %d =======\n" , i++ );
     take_frame( (byte * )pixels );
     if( debugmode )
     {
