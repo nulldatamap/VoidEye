@@ -98,6 +98,7 @@ int jobQueueIndex = 0;
 
 int debugmode = 0;
 int nextflag = 0;
+int avaragesort = 0;
 int exitflag = 0;
 
 // //
@@ -150,6 +151,10 @@ void handle_input(  )
           case SDLK_d:
             debugmode = 1;
             printf( "Entering debugmode\n" );
+            break;
+          case SDLK_f:
+            avaragesort = 1;
+            printf("Doing avaragesort instead.\n", );
             break;
           case SDLK_ESCAPE:
             exitflag = 1;
@@ -503,6 +508,11 @@ Square * group_units( Cell * cell , int * sc )
   return squares;
 }
 
+int abs( int a )
+{
+  return a < 0 ? -a : a;
+}
+
 void sort_squares( Square * squares , int squarecount )
 {
   int i;
@@ -515,6 +525,34 @@ sort:
     if( squares[i].size < squares[i+1].size )
     {
       printf( "%d < %d, swapping %d and %d\n" , squares[i].size , squares[i+1].size , i , i+1 );
+      temp = squares[i];
+      squares[i] = squares[i+1];
+      squares[i+1] = temp;
+      goto sort;
+    }
+  }
+  printf( "Sorted.\n" );
+  return;
+}
+
+void avaragesort_squares( Square * squares , int squarecount )
+{
+  int i;
+  int avarage = 0;
+  for( i = 0; i < squarecount; i++ )
+  {
+    avarage += squares[i].size;
+  }
+  avarage /= squarecount;
+  Square temp;
+  printf( "Sorting squares!\n" );
+  if( squarecount <= 2 ) return;
+sort:
+  for( i = 0; i < squarecount-1; i++ )
+  {
+    if( abs( squares[i].size - avarage ) > abs( squares[i+1].size - avarage ) )
+    {
+      printf( "%d > %d, swapping %d and %d\n" ,abs( squares[i].size - avarage ) , abs( squares[i+1].size - avarage ) , i , i+1 );
       temp = squares[i];
       squares[i] = squares[i+1];
       squares[i+1] = temp;
@@ -538,11 +576,6 @@ void render_squares( Square * squares , int squarecount )
   SDL_BlitSurface( downscale , NULL , window , NULL );
   SDL_Flip( window );
   SDL_Delay( 0 );
-}
-
-int abs( int a )
-{
-  return a < 0 ? -a : a;
 }
 
 int sign( int a )
@@ -669,7 +702,8 @@ void create_groups()
   unitize_cell( cell );
   int squarecount = 0;
   Square * squares = group_units( cell , &squarecount );
-  sort_squares( squares , squarecount );
+  if( avaragesort ) avaragesort_squares( squares , squarecount );
+  else sort_squares( squares , squarecount );
   printf( "Rendering\n" );
   if( debugmode )
   {
