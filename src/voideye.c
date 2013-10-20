@@ -24,6 +24,8 @@
 #define MASK_B 0xFF0000
 #define MASK_A 0x00
 
+#define forrange( X , Y ) for( X = 0; X < Y; X++ )
+
 typedef unsigned char byte;
 
 typedef struct
@@ -32,6 +34,14 @@ typedef struct
   byte g;
   byte b;
 } Pixel;
+
+typedef struct
+{
+  byte r;
+  byte g;
+  byte b;
+  byte a;
+} APixel;
 
 typedef struct
 {
@@ -64,8 +74,15 @@ typedef struct
   int size;
 } Square;
 
+typedef struct
+{
+  int x , y;
+  int distance;
+} Indicator;
+
 SDL_Surface * input;
 SDL_Surface * downscale;
+SDL_Surface * displayobject;
 SDL_Surface * window;
 Pixel * pixels;
 Pixel * dspixels;
@@ -75,8 +92,77 @@ int nextSeed = 0;
 Job * jobQueue;
 int jobQueueIndex = 0;
 
+// RUNTIME FLAGS:
+
+int debugmode = 0;
+int nextflag = 0;
+int exitflag = 0;
+
+// //
+
+SDL_Event event;
+
 byte avarage[3];
 int red_procentage;
+
+APixel pixel_to_apixel( Pixel p )
+{
+  return ( APixel ) { p.r , p.g , p.b , 255 };
+}
+
+void handle_input(  )
+{
+  while( SDL_PollEvent( &event ) )
+  {
+    if( event.type == SDL_QUIT )
+    {
+      exit( 0 );
+    }else if( event.type = SDL_KEYPRESS )
+    {
+      if( debugmode )
+      {
+        switch( event.key.keysym.sym )
+        {
+          case SDLK_d:
+            debugmode = 0;
+            printf( "Exiting debugmode\n" );
+            break;
+          case SDLK_SPACE:
+            nextflag = 1;
+            break;
+          case SDLK_ESCAPE:
+            exitflag = debugmode = 0;
+            break;
+        }
+      }else
+      {
+        switch( event.key.keysym.sym )
+        {
+          case SDLK_d:
+            debugmode = 1;
+            printf( "Entering debugmode\n" );
+            break;
+          case SDLK_ESCAPE:
+            exitflag = 0;
+            break;
+        }
+      }
+    }
+  }
+}
+
+void wait_for_next()
+{
+  nextflag = 0;
+  while( !nextflag )
+  {
+    handle_input();
+    if( ! debugmode || exitflag ) break;
+    SDL_Delay( 10 );
+  }
+  printf( "Next!\n" );
+  nextflag = 0;
+}
 
 void init_test( const char * fname )
 {
@@ -87,6 +173,20 @@ void init_test( const char * fname )
   {
     printf( "Failed to load SDL2: %s\n" , SDL_GetError() );
     exit(1);
+  }
+
+  printf( "Initializing SDL_image.\n" );
+  if( IMG_Init( IMG_INIT_PNG ) != IMG_INIT_PNG )
+  {
+    printf( "Failed to load SDL_Image with PNG module: %s" , IMG_GetError() );
+    exit( 1 );
+  }
+
+  printf( "Loading the display object.\n" );
+  if( !( displayobject = IMG_Load( "./displayobject.png" ) ) )
+  {
+    printf( "Failed to load the display object: %s" , IMG_GetError() );
+    exit( 1 );
   }
 
   printf( "Creating a window.\n" );
@@ -190,10 +290,6 @@ void do_downscale()
     {
       dspixels[dsat( x , y )] = pixels[at( x * 5 , y * 5 )];
     }
-  /*printf( "Downscaled. ( %d %d %d )\n" , r , g , b );
-  SDL_BlitSurface( downscale, NULL, window, NULL );
-  SDL_Flip( window );
-  SDL_Delay( 1000 );*/
 }
 
 void apply_contrast( int amount )
@@ -210,9 +306,13 @@ void apply_contrast( int amount )
     else
       dspixels[i] = ( Pixel ) { 0x00 , 0x00 , 0x00 };
   }
-  SDL_BlitSurface( downscale, NULL, window, NULL );
-  SDL_Flip( window );
-  SDL_Delay( 0 );
+  if( debugmode )
+  {
+    SDL_BlitSurface( downscale, NULL, window, NULL );
+    SDL_Flip( window );
+    SDL_Delay( 0 );
+    wait_for_next();
+  }
 }
 
 void queue_job( Job job )
@@ -498,6 +598,52 @@ void render_center( Square * squares , int squarecount )
   SDL_Delay( 0 );  
 }
 
+void render_scaled_image( SDL_Surface * src , SDL_Surface * dst , int x, int y, int w , int h )
+{
+  APixel * apx = ( APixel * ) malloc( sizeof( APixel ) * w * h );
+  int dx , dy; // Destination x , y
+  int sx , sy; // Source x , y
+  double px , py; // Procentage x , y
+  forrange( dx , w )
+    forrange( dy , h )
+    {
+      px = ( double ) dx / ( double ) w;
+      py = ( double ) dy / ( double ) h;
+      sx = src->w * px;
+      sy = src->h * py;
+      apx[ dx + ( dy * w ) ] =
+        pixel_to_apixel( ( ( Pixel * ) src->pixels )[ sx + ( sy * src->w ) ] );
+    }
+  SDL_Surface temp = SDL_CreateRGBSurfaceFrom( apx , w , h , 32 , w * 32 , 0xFF , 0xFF00 , 0xFF0000 , 0xFF000000 );
+  SDL_BlitSurface( temp , NULL , dst , ( SDL_Rect ) { x , y , 0 , 0 } );
+  SDL_FreeSurface( temp );
+  free( apx );
+}
+
+Indicator get_indication( Square * squares , int squarecount )
+{
+  int ax = 0;
+  int ay = 0;
+  int ad = 0;
+  int cx , cy;
+  int t =  ( squarecount > 4 ? 4 : squarecount );
+  int i;
+  for( i = 0; i < t; i++ )
+  {
+    ax += squares[i].x + ( squares[i].size / 2 );
+    ay += squares[i].y + ( squares[i].size / 2 );
+  }
+  ax /= t;
+  ay /= t;
+  for( i = 0; i < t; i++ )
+  {
+    cx = ax - squares[i].x + ( squares[i].size / 2 );
+    cy = ay - squares[i].y + ( squares[i].size / 2 );
+    ad += sqrt( cx * cx + cy * cy );
+  }
+  ad /= t;
+  return ( Indicator ) { ax*DS_SCALE , ay*DS_SCALE , ad*DS_SCALE };
+}
 
 void create_groups()
 {
@@ -507,30 +653,53 @@ void create_groups()
   Square * squares = group_units( cell , &squarecount );
   sort_squares( squares , squarecount );
   printf( "Rendering\n" );
-  render_squares( squares , squarecount );
+  if( debugmode )
+  {
+    render_squares( squares , squarecount );
+    wait_for_next();
+  }
   if( squarecount <= 2 )
   {
     printf( "Not enough squares to build area.\n" );
   }else
   {
-    render_center( squares , squarecount );
+    if( debugmode )
+    {
+      render_center( squares , squarecount );
+      wait_for_next();
+    }
+    Indicator indic = get_indication();
+    printf("Indicator %d %d : %d\n" , indic.x , indic.y , indic.distance );
+    int px , py , pw , ph;
+    px = indic.x - displayobject->w / 2;
+    py = indic.y - displayobject->h / 2;
+    double scale = ( double ) 100  / indic.distance;
+    pw = displayobject->w * scale;
+    ph = displayobject->h * scale;
+    render_scaled_image( displayobject , window , px , py , pw , ph );
+    SDL_Flip( window );
   }
   free( cell->units );
   free( cell );
   free( squares );
-  //update_texture();
+  if( debugmode ) wait_for_next();
 }
 
 void video_loop()
 {
-  int i;
-  for( i = 0; i < 10; i++ )
+  while( ! exitflag )
   {
     printf( "======= INTERATION %d =======\n" , i );
     take_frame( (byte * )pixels );
-    update_texture();
+    if( debugmode )
+    {
+      update_texture();
+      wait_for_next();
+    }
     apply_contrast( 911 );
     create_groups();
+    if( debugmode ) wait_for_next();
+    else handle_input();
   }
 }
 
